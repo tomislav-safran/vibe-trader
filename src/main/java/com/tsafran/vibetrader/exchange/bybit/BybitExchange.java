@@ -1,27 +1,23 @@
 package com.tsafran.vibetrader.exchange.bybit;
 
-import com.bybit.api.client.domain.GenericResponse;
-import com.bybit.api.client.domain.CategoryType;
 import com.bybit.api.client.domain.TradeOrderType;
-import com.bybit.api.client.domain.market.MarketInterval;
+import com.bybit.api.client.domain.account.request.AccountDataRequest;
 import com.bybit.api.client.domain.market.request.MarketDataRequest;
 import com.bybit.api.client.domain.market.response.kline.MarketKlineEntry;
-import com.bybit.api.client.domain.market.response.kline.MarketKlineResult;
 import com.bybit.api.client.domain.position.TpslMode;
-import com.bybit.api.client.domain.trade.Side;
 import com.bybit.api.client.domain.trade.request.TradeOrderRequest;
 import com.bybit.api.client.domain.trade.response.OrderResponse;
+import com.bybit.api.client.restApi.BybitApiAccountRestClient;
 import com.bybit.api.client.restApi.BybitApiMarketRestClient;
 import com.bybit.api.client.restApi.BybitApiTradeRestClient;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tsafran.vibetrader.exchange.Exchange;
 import com.tsafran.vibetrader.exchange.ExchangeCategory;
 import com.tsafran.vibetrader.exchange.ExchangeInterval;
-import com.tsafran.vibetrader.exchange.ExchangeMarketMapper;
-import com.tsafran.vibetrader.exchange.ExchangeOrderSide;
 import com.tsafran.vibetrader.exchange.FuturesMarketOrderRequest;
+import com.tsafran.vibetrader.exchange.InstrumentPrecision;
+import com.tsafran.vibetrader.util.Util;
 import com.tsafran.vibetrader.exchange.Ohlcv;
+import com.tsafran.vibetrader.exchange.WalletBalanceRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -34,9 +30,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class BybitExchange implements Exchange {
     private final BybitApiMarketRestClient marketClient;
+    private final BybitApiAccountRestClient accountClient;
     private final BybitApiTradeRestClient tradeClient;
-    private final ExchangeMarketMapper<CategoryType, MarketInterval> marketMapper;
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Override
     public List<Ohlcv> getKlines(String symbol, ExchangeCategory category, ExchangeInterval interval, @Min(1) int limit) {
@@ -45,14 +40,14 @@ public class BybitExchange implements Exchange {
         Objects.requireNonNull(interval, "interval");
 
         MarketDataRequest request = MarketDataRequest.builder()
-                .category(marketMapper.mapCategory(category))
+                .category(BybitUtil.mapCategory(category))
                 .symbol(symbol)
-                .marketInterval(marketMapper.mapInterval(interval))
+                .marketInterval(BybitUtil.mapInterval(interval))
                 .limit(limit)
                 .build();
 
         Object response = marketClient.getMarketLinesData(request);
-        List<MarketKlineEntry> entries = getMarketKlineEntries(response);
+        List<MarketKlineEntry> entries = BybitUtil.getMarketKlineEntries(response);
         if (entries == null || entries.isEmpty()) {
             return List.of();
         }
@@ -60,12 +55,12 @@ public class BybitExchange implements Exchange {
         return entries.stream()
                 .map(entry -> new Ohlcv(
                         entry.getStartTime(),
-                        parseDecimal(entry.getOpenPrice()),
-                        parseDecimal(entry.getHighPrice()),
-                        parseDecimal(entry.getLowPrice()),
-                        parseDecimal(entry.getClosePrice()),
-                        parseDecimal(entry.getVolume()),
-                        parseDecimal(entry.getTurnover())
+                        Util.parseDecimal(entry.getOpenPrice()),
+                        Util.parseDecimal(entry.getHighPrice()),
+                        Util.parseDecimal(entry.getLowPrice()),
+                        Util.parseDecimal(entry.getClosePrice()),
+                        Util.parseDecimal(entry.getVolume()),
+                        Util.parseDecimal(entry.getTurnover())
                 ))
                 .toList();
     }
@@ -75,9 +70,9 @@ public class BybitExchange implements Exchange {
         Objects.requireNonNull(request, "request");
 
         TradeOrderRequest.TradeOrderRequestBuilder builder = TradeOrderRequest.builder()
-                .category(marketMapper.mapCategory(request.category()))
+                .category(BybitUtil.mapCategory(request.category()))
                 .symbol(request.symbol())
-                .side(mapSide(request.side()))
+                .side(BybitUtil.mapSide(request.side()))
                 .orderType(TradeOrderType.MARKET)
                 .tpslMode(TpslMode.FULL.name())
                 .isLeverage(1)
@@ -91,53 +86,34 @@ public class BybitExchange implements Exchange {
         }
 
         Object response = tradeClient.createOrder(builder.build());
-        OrderResponse orderResponse = getOrderResponse(response);
+        OrderResponse orderResponse = BybitUtil.getOrderResponse(response);
         return orderResponse == null ? null : orderResponse.getOrderId();
     }
 
-    private static List<MarketKlineEntry> getMarketKlineEntries(Object response) {
-        GenericResponse<MarketKlineResult> genericResponse = MAPPER.convertValue(
-                response,
-                new TypeReference<>() {}
-        );
+    @Override
+    public BigDecimal getWalletBalance(WalletBalanceRequest request) {
+        Objects.requireNonNull(request, "request");
 
-        if (genericResponse.getRetCode() != 0) {
-            throw new IllegalStateException(
-                    "Bybit error: " + genericResponse.getRetCode() + " " + genericResponse.getRetMsg()
-            );
+        AccountDataRequest.AccountDataRequestBuilder builder = AccountDataRequest.builder()
+                .accountType(BybitUtil.mapAccountType(request.accountType()));
+
+        Object response = accountClient.getWalletBalance(builder.build());
+        return BybitUtil.extractTotalAvailableBalance(response);
+    }
+
+    @Override
+    public InstrumentPrecision getInstrumentPrecision(String symbol) {
+        if (symbol == null || symbol.isBlank()) {
+            throw new IllegalArgumentException("symbol must be provided");
         }
 
-        MarketKlineResult result = genericResponse.getResult();
-        if (result == null || result.getMarketKlineEntries() == null) {
-            return List.of();
-        }
+        MarketDataRequest request = MarketDataRequest.builder()
+                .category(BybitUtil.mapCategory(ExchangeCategory.LINEAR))
+                .symbol(symbol)
+                .build();
 
-        return result.getMarketKlineEntries();
+        Object response = marketClient.getInstrumentsInfo(request);
+        return BybitUtil.extractInstrumentPrecision(response, symbol);
     }
 
-    private static OrderResponse getOrderResponse(Object response) {
-        GenericResponse<OrderResponse> genericResponse = MAPPER.convertValue(
-                response,
-                new TypeReference<>() {}
-        );
-
-        if (genericResponse.getRetCode() != 0) {
-            throw new IllegalStateException(
-                    "Bybit error: " + genericResponse.getRetCode() + " " + genericResponse.getRetMsg()
-            );
-        }
-
-        return genericResponse.getResult();
-    }
-
-    private static Side mapSide(ExchangeOrderSide side) {
-        return switch (side) {
-            case LONG -> Side.BUY;
-            case SHORT -> Side.SELL;
-        };
-    }
-
-    private static BigDecimal parseDecimal(String value) {
-        return value == null ? null : new BigDecimal(value);
-    }
 }

@@ -1,11 +1,14 @@
 package com.tsafran.vibetrader.shell;
 
 import com.tsafran.vibetrader.exchange.Exchange;
+import com.tsafran.vibetrader.exchange.ExchangeAccountType;
 import com.tsafran.vibetrader.exchange.ExchangeCategory;
 import com.tsafran.vibetrader.exchange.ExchangeInterval;
 import com.tsafran.vibetrader.exchange.ExchangeOrderSide;
 import com.tsafran.vibetrader.exchange.FuturesMarketOrderRequest;
+import com.tsafran.vibetrader.exchange.InstrumentPrecision;
 import com.tsafran.vibetrader.exchange.Ohlcv;
+import com.tsafran.vibetrader.exchange.WalletBalanceRequest;
 import org.springframework.shell.command.annotation.Command;
 import org.springframework.shell.command.annotation.Option;
 import org.springframework.stereotype.Component;
@@ -78,6 +81,33 @@ public class BybitCommands {
         return orderId == null ? "Order placed, no order id returned." : "Order placed: " + orderId;
     }
 
+    @Command(command = "balance", description = "Fetch wallet balance from Bybit")
+    public String balance(
+            @Option(longNames = "account", defaultValue = "unified") String accountType
+    ) {
+        ExchangeAccountType exchangeAccountType = parseAccountType(accountType);
+        WalletBalanceRequest request = new WalletBalanceRequest(exchangeAccountType);
+
+        BigDecimal balance = bybitExchange.getWalletBalance(request);
+        if (balance == null) {
+            return "No balance returned.";
+        }
+
+        return accountType + " - total available balance: " + balance;
+    }
+
+    @Command(command = "precision", description = "Fetch base precision and tick size for a symbol")
+    public String precision(
+            @Option(longNames = "symbol") String symbol
+    ) {
+        InstrumentPrecision precision = bybitExchange.getInstrumentPrecision(symbol);
+        if (precision == null) {
+            return "No precision returned.";
+        }
+
+        return "Base precision: " + precision.basePrecision() + ", Tick size: " + precision.tickSize();
+    }
+
     private static ExchangeCategory parseCategory(String value) {
         String normalized = value.trim().toUpperCase(Locale.ROOT);
         return ExchangeCategory.valueOf(normalized);
@@ -110,5 +140,10 @@ public class BybitCommands {
             case "short", "sell" -> ExchangeOrderSide.SHORT;
             default -> throw new IllegalArgumentException("Unsupported side: " + value);
         };
+    }
+
+    private static ExchangeAccountType parseAccountType(String value) {
+        String normalized = value.trim().toUpperCase(Locale.ROOT);
+        return ExchangeAccountType.valueOf(normalized);
     }
 }

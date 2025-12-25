@@ -1,6 +1,7 @@
 package com.tsafran.vibetrader.exchange.bybit;
 
 import com.bybit.api.client.config.BybitApiConfig;
+import com.bybit.api.client.restApi.BybitApiAccountRestClient;
 import com.bybit.api.client.restApi.BybitApiMarketRestClient;
 import com.bybit.api.client.restApi.BybitApiTradeRestClient;
 import com.bybit.api.client.service.BybitApiClientFactory;
@@ -28,5 +29,14 @@ public class BybitConfig {
         }
 
         return BybitApiClientFactory.newInstance(apiKey, apiSecret, BybitApiConfig.DEMO_TRADING_DOMAIN).newTradeRestClient();
+    }
+
+    @Bean
+    public BybitApiAccountRestClient bybitApiAccountRestClient() {
+        if (apiKey == null || apiKey.isBlank() || apiSecret == null || apiSecret.isBlank()) {
+            return BybitApiClientFactory.newInstance().newAccountRestClient();
+        }
+
+        return BybitApiClientFactory.newInstance(apiKey, apiSecret, BybitApiConfig.DEMO_TRADING_DOMAIN).newAccountRestClient();
     }
 }
