@@ -9,6 +9,7 @@ import com.tsafran.vibetrader.exchange.FuturesMarketOrderRequest;
 import com.tsafran.vibetrader.exchange.InstrumentPrecision;
 import com.tsafran.vibetrader.exchange.Ohlcv;
 import com.tsafran.vibetrader.exchange.WalletBalanceRequest;
+import com.tsafran.vibetrader.util.Util;
 import org.springframework.shell.command.annotation.Command;
 import org.springframework.shell.command.annotation.Option;
 import org.springframework.stereotype.Component;
@@ -66,7 +67,7 @@ public class BybitCommands {
             @Option(longNames = "category", defaultValue = "linear") String category
     ) {
         ExchangeCategory exchangeCategory = parseCategory(category);
-        ExchangeOrderSide orderSide = parseOrderSide(side);
+        ExchangeOrderSide orderSide = Util.parseOrderSide(side);
 
         FuturesMarketOrderRequest request = new FuturesMarketOrderRequest(
                 symbol,
@@ -130,15 +131,6 @@ public class BybitCommands {
             case "w", "1w", "week", "1week" -> ExchangeInterval.ONE_WEEK;
             case "mo", "1mo", "month", "1month" -> ExchangeInterval.ONE_MONTH;
             default -> throw new IllegalArgumentException("Unsupported interval: " + value);
-        };
-    }
-
-    private static ExchangeOrderSide parseOrderSide(String value) {
-        String normalized = value.trim().toLowerCase(Locale.ROOT);
-        return switch (normalized) {
-            case "long", "buy" -> ExchangeOrderSide.LONG;
-            case "short", "sell" -> ExchangeOrderSide.SHORT;
-            default -> throw new IllegalArgumentException("Unsupported side: " + value);
         };
     }
 
