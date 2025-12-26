@@ -10,6 +10,7 @@ import com.tsafran.vibetrader.exchange.InstrumentPrecision;
 import com.tsafran.vibetrader.exchange.Ohlcv;
 import com.tsafran.vibetrader.exchange.WalletBalanceRequest;
 import com.tsafran.vibetrader.util.Util;
+import lombok.RequiredArgsConstructor;
 import org.springframework.shell.command.annotation.Command;
 import org.springframework.shell.command.annotation.Option;
 import org.springframework.stereotype.Component;
@@ -19,13 +20,10 @@ import java.util.List;
 import java.util.Locale;
 
 @Component
+@RequiredArgsConstructor
 @Command(command = "bybit", description = "Bybit exchange commands")
 public class BybitCommands {
     private final Exchange bybitExchange;
-
-    public BybitCommands(Exchange bybitExchange) {
-        this.bybitExchange = bybitExchange;
-    }
 
     @Command(command = "klines", description = "Fetch OHLCV klines from Bybit")
     public String klines(

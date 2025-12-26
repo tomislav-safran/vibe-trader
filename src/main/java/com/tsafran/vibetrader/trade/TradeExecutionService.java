@@ -9,6 +9,7 @@ import com.tsafran.vibetrader.exchange.ExchangeInterval;
 import com.tsafran.vibetrader.exchange.FuturesMarketOrderRequest;
 import com.tsafran.vibetrader.exchange.Ohlcv;
 import com.tsafran.vibetrader.position.PositionService;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -17,18 +18,13 @@ import java.util.List;
 import java.util.Objects;
 
 @Service
+@RequiredArgsConstructor
 public class TradeExecutionService {
     private static final Logger logger = LoggerFactory.getLogger(TradeExecutionService.class);
 
     private final Exchange exchange;
     private final AiTradeService aiTradeService;
     private final PositionService positionService;
-
-    public TradeExecutionService(Exchange exchange, AiTradeService aiTradeService, PositionService positionService) {
-        this.exchange = exchange;
-        this.aiTradeService = aiTradeService;
-        this.positionService = positionService;
-    }
 
     public String craftAndPlaceTrade(String symbol) {
         Objects.requireNonNull(symbol, "symbol");

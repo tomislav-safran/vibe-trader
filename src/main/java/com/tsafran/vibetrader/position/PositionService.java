@@ -6,6 +6,7 @@ import com.tsafran.vibetrader.exchange.FuturesMarketOrderRequest;
 import com.tsafran.vibetrader.exchange.InstrumentPrecision;
 import com.tsafran.vibetrader.exchange.WalletBalanceRequest;
 import com.tsafran.vibetrader.util.Util;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -13,15 +14,12 @@ import java.math.RoundingMode;
 import java.util.Objects;
 
 @Service
+@RequiredArgsConstructor
 public class PositionService {
     private static final BigDecimal MAX_RISK_FRACTION = new BigDecimal("0.01");
     private static final int RISK_DIVIDE_SCALE = 16;
 
     private final Exchange exchange;
-
-    public PositionService(Exchange exchange) {
-        this.exchange = exchange;
-    }
 
     public FuturesMarketOrderRequest buildMarketOrder(ProposedPosition proposedPosition) {
         Objects.requireNonNull(proposedPosition, "proposedPosition");

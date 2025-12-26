@@ -1,18 +1,16 @@
 package com.tsafran.vibetrader.shell;
 
 import com.tsafran.vibetrader.trade.TradeExecutionService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.shell.command.annotation.Command;
 import org.springframework.shell.command.annotation.Option;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 @Command(command = "trade", description = "AI-driven trade commands")
 public class TradeCommands {
     private final TradeExecutionService tradeExecutionService;
-
-    public TradeCommands(TradeExecutionService tradeExecutionService) {
-        this.tradeExecutionService = tradeExecutionService;
-    }
 
     @Command(command = "place", description = "Craft and place a single AI trade for a symbol")
     public String place(@Option(longNames = "symbol") String symbol) {
