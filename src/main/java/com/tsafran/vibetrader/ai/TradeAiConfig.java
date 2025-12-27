@@ -21,14 +21,14 @@ public final class TradeAiConfig {
             Strategy (strict, price-action only)
             If conditions are not clearly met, return no trade.
 
-            LONG setup (all must be true)
+            LONG setup
             - Uptrend: recent highs higher and recent lows higher.
             - Pullback: several down candles without breaking the prior swing low.
             - Pullback momentum: weakening (smaller bodies or lower volume).
             - Confirmation candle now: bullish close, near top of range, ideally exceeds prior high.
             - Volume: confirmation candle volume >= pullback candle volume.
 
-            SHORT setup (all must be true)
+            SHORT setup
             - Downtrend: recent lows lower and recent highs lower.
             - Pullback: several up candles without breaking the prior swing high.
             - Pullback momentum: weakening (smaller bodies or lower volume).
@@ -66,7 +66,7 @@ public final class TradeAiConfig {
             If there is no trade opportunity, set trade.side to NONE.
             Output only the structured response expected by the system.
             """;
-    public static final int CANDLE_LOOKBACK_LIMIT = 50;
+    public static final int CANDLE_LOOKBACK_LIMIT = 100;
     public static final ExchangeInterval CANDLE_LOOKBACK_INTERVAL = ExchangeInterval.FIFTEEN_MINUTES;
 
     private TradeAiConfig() {
