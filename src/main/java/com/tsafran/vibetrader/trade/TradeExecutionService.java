@@ -9,12 +9,15 @@ import com.tsafran.vibetrader.exchange.ExchangeCategory;
 import com.tsafran.vibetrader.exchange.ExchangeInterval;
 import com.tsafran.vibetrader.exchange.FuturesMarketOrderRequest;
 import com.tsafran.vibetrader.exchange.Ohlcv;
+import com.tsafran.vibetrader.indicators.IndicatorSeries;
+import com.tsafran.vibetrader.indicators.IndicatorService;
 import com.tsafran.vibetrader.position.PositionService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -27,6 +30,7 @@ public class TradeExecutionService {
     private final AiTradeService aiTradeService;
     private final PositionService positionService;
     private final TradeAiConfigService tradeAiConfigService;
+    private final IndicatorService indicatorService;
 
     public String craftAndPlaceTrade(String symbol) {
         return craftAndPlaceTrade(symbol, null);
@@ -80,26 +84,63 @@ public class TradeExecutionService {
                 symbol,
                 ExchangeCategory.LINEAR,
                 interval,
-                config.candleLookbackLimit()
+                resolveLookbackLimit(config)
         );
 
         if (candles == null || candles.isEmpty()) {
             throw new IllegalStateException("No candles returned for " + symbol);
         }
 
+        candles = candles.stream()
+                .sorted(Comparator.comparingLong(Ohlcv::startTime))
+                .toList();
+
+        int lookbackLimit = config.candleLookbackLimit();
+        int startIndex = Math.max(0, candles.size() - lookbackLimit);
+        List<Ohlcv> contextCandles = candles.subList(startIndex, candles.size());
+        List<IndicatorSeries> indicatorSeries = indicatorService.computeIndicatorSeries(
+                candles,
+                interval,
+                config.indicators()
+        );
+
         StringBuilder builder = new StringBuilder();
         builder.append("Symbol: ").append(symbol).append('\n');
         builder.append("Interval: ").append(interval).append('\n');
-        builder.append("Candles (startTime,open,high,low,close,volume):\n");
-        for (Ohlcv candle : candles) {
+        builder.append("Candles (startTime,open,high,low,close,volume");
+        for (IndicatorSeries series : indicatorSeries) {
+            builder.append(',').append(series.name());
+        }
+        builder.append("):\n");
+        for (int i = 0; i < contextCandles.size(); i++) {
+            Ohlcv candle = contextCandles.get(i);
             builder.append(candle.startTime()).append(',')
                     .append(candle.open()).append(',')
                     .append(candle.high()).append(',')
                     .append(candle.low()).append(',')
                     .append(candle.close()).append(',')
-                    .append(candle.volume())
-                    .append('\n');
+                    .append(candle.volume());
+            for (IndicatorSeries series : indicatorSeries) {
+                List<String> values = series.values();
+                int valueIndex = startIndex + i;
+                builder.append(',').append(values.get(valueIndex));
+            }
+            builder.append('\n');
         }
         return builder.toString();
+    }
+
+    private int resolveLookbackLimit(TradeAiSettings config) {
+        boolean hasIndicators = config.indicators() != null && !config.indicators().isEmpty();
+        if (!hasIndicators) {
+            return config.candleLookbackLimit();
+        }
+        int indicatorLookback = config.indicatorLookbackLimit();
+        if (indicatorLookback < config.candleLookbackLimit()) {
+            throw new IllegalArgumentException(
+                    "indicatorLookbackLimit must be >= candleLookbackLimit when indicators are enabled."
+            );
+        }
+        return indicatorLookback;
     }
 }

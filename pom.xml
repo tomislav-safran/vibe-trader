@@ -62,6 +62,11 @@
             <artifactId>bybit-java-api</artifactId>
             <version>1.2.7</version>
         </dependency>
+        <dependency>
+            <groupId>org.ta4j</groupId>
+            <artifactId>ta4j-core</artifactId>
+            <version>0.21.0</version>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
