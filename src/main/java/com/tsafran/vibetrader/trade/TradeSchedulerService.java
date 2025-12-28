@@ -1,5 +1,6 @@
 package com.tsafran.vibetrader.trade;
 
+import com.tsafran.vibetrader.ai.TradeAiConfigService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,25 +20,33 @@ public class TradeSchedulerService {
 
     private final TaskScheduler tradeTaskScheduler;
     private final TradeExecutionService tradeExecutionService;
+    private final TradeAiConfigService tradeAiConfigService;
     private final Map<String, ScheduledFuture<?>> scheduledJobs = new ConcurrentHashMap<>();
 
-    public void scheduleTrade(String symbol, long intervalMinutes) {
+    public void scheduleTrade(String symbol, long intervalMinutes, String configName) {
         Objects.requireNonNull(symbol, "symbol");
         if (intervalMinutes <= 0) {
             throw new IllegalArgumentException("intervalMinutes must be positive");
         }
 
         String normalizedSymbol = symbol.trim().toUpperCase();
+        String resolvedConfigName = tradeAiConfigService.resolveConfigName(configName);
+        tradeAiConfigService.loadConfig(resolvedConfigName);
         cancelExisting(normalizedSymbol);
 
         Duration interval = Duration.ofMinutes(intervalMinutes);
         ScheduledFuture<?> future = tradeTaskScheduler.scheduleAtFixedRate(
-                () -> runTrade(normalizedSymbol),
+                () -> runTrade(normalizedSymbol, resolvedConfigName),
                 interval
         );
 
         scheduledJobs.put(normalizedSymbol, future);
-        logger.info("Scheduled trade job for {} every {} minutes", normalizedSymbol, intervalMinutes);
+        logger.info(
+                "Scheduled trade job for {} every {} minutes using config {}",
+                normalizedSymbol,
+                intervalMinutes,
+                resolvedConfigName
+        );
     }
 
     public void cancelTrade(String symbol) {
@@ -50,9 +59,9 @@ public class TradeSchedulerService {
         }
     }
 
-    private void runTrade(String symbol) {
+    private void runTrade(String symbol, String configName) {
         try {
-            String orderId = tradeExecutionService.craftAndPlaceTrade(symbol);
+            String orderId = tradeExecutionService.craftAndPlaceTrade(symbol, configName);
             if (orderId == null || orderId.isBlank()) {
                 logger.info("No trade placed for {}", symbol);
             } else {

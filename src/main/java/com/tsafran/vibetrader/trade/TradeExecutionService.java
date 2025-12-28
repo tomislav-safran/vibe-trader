@@ -2,7 +2,8 @@ package com.tsafran.vibetrader.trade;
 
 import com.tsafran.vibetrader.ai.AiTradeProposal;
 import com.tsafran.vibetrader.ai.AiTradeService;
-import com.tsafran.vibetrader.ai.TradeAiConfig;
+import com.tsafran.vibetrader.ai.TradeAiConfigService;
+import com.tsafran.vibetrader.ai.TradeAiSettings;
 import com.tsafran.vibetrader.exchange.Exchange;
 import com.tsafran.vibetrader.exchange.ExchangeCategory;
 import com.tsafran.vibetrader.exchange.ExchangeInterval;
@@ -25,26 +26,32 @@ public class TradeExecutionService {
     private final Exchange exchange;
     private final AiTradeService aiTradeService;
     private final PositionService positionService;
+    private final TradeAiConfigService tradeAiConfigService;
 
     public String craftAndPlaceTrade(String symbol) {
+        return craftAndPlaceTrade(symbol, null);
+    }
+
+    public String craftAndPlaceTrade(String symbol, String configName) {
         Objects.requireNonNull(symbol, "symbol");
 
+        TradeAiSettings config = tradeAiConfigService.loadConfig(configName);
         logger.info("Placing trade for symbol: {}", symbol);
         if (exchange.hasOpenOrders(symbol)) {
             logger.info("Skipping trade: open order already exists for {}", symbol);
             return null;
         }
-        String systemMessage = buildSystemMessage();
-        String userMessage = buildUserMessage(symbol);
+        String systemMessage = buildSystemMessage(config);
+        String userMessage = buildUserMessage(symbol, config);
 
         logger.info("Prompting AI...");
         AiTradeProposal proposal = aiTradeService.proposeTrade(symbol, systemMessage, userMessage);
         logger.info("AI response: {}", proposal);
-        if (proposal.certaintyPercent() < TradeAiConfig.CERTAINTY_THRESHOLD) {
+        if (proposal.certaintyPercent() < config.certaintyThreshold()) {
             logger.info(
                     "Trade skipped: certainty {} below threshold {}",
                     proposal.certaintyPercent(),
-                    TradeAiConfig.CERTAINTY_THRESHOLD
+                    config.certaintyThreshold()
             );
             return null;
         }
@@ -63,17 +70,17 @@ public class TradeExecutionService {
         return orderId;
     }
 
-    private String buildSystemMessage() {
-        return "Strategy:\n" + TradeAiConfig.STRATEGY;
+    private String buildSystemMessage(TradeAiSettings config) {
+        return "Strategy:\n" + config.strategy();
     }
 
-    private String buildUserMessage(String symbol) {
-        ExchangeInterval interval = TradeAiConfig.CANDLE_LOOKBACK_INTERVAL;
+    private String buildUserMessage(String symbol, TradeAiSettings config) {
+        ExchangeInterval interval = config.candleLookbackInterval();
         List<Ohlcv> candles = exchange.getKlines(
                 symbol,
                 ExchangeCategory.LINEAR,
                 interval,
-                TradeAiConfig.CANDLE_LOOKBACK_LIMIT
+                config.candleLookbackLimit()
         );
 
         if (candles == null || candles.isEmpty()) {
@@ -83,15 +90,14 @@ public class TradeExecutionService {
         StringBuilder builder = new StringBuilder();
         builder.append("Symbol: ").append(symbol).append('\n');
         builder.append("Interval: ").append(interval).append('\n');
-        builder.append("Candles (startTime,open,high,low,close,volume,turnover):\n");
+        builder.append("Candles (startTime,open,high,low,close,volume):\n");
         for (Ohlcv candle : candles) {
             builder.append(candle.startTime()).append(',')
                     .append(candle.open()).append(',')
                     .append(candle.high()).append(',')
                     .append(candle.low()).append(',')
                     .append(candle.close()).append(',')
-                    .append(candle.volume()).append(',')
-                    .append(candle.turnover())
+                    .append(candle.volume())
                     .append('\n');
         }
         return builder.toString();

@@ -15,8 +15,11 @@ public class TradeCommands {
     private final TradeSchedulerService tradeSchedulerService;
 
     @Command(command = "place", description = "Craft and place a single AI trade for a symbol")
-    public String place(@Option(longNames = "symbol") String symbol) {
-        String orderId = tradeExecutionService.craftAndPlaceTrade(symbol);
+    public String place(
+            @Option(longNames = "symbol") String symbol,
+            @Option(longNames = "config", defaultValue = "default") String configName
+    ) {
+        String orderId = tradeExecutionService.craftAndPlaceTrade(symbol, configName);
         if (orderId == null || orderId.isBlank()) {
             return "No trade placed.";
         }
@@ -26,10 +29,11 @@ public class TradeCommands {
     @Command(command = "schedule", description = "Schedule recurring AI trades for a symbol")
     public String schedule(
             @Option(longNames = "symbol") String symbol,
-            @Option(longNames = "minutes") long intervalMinutes
+            @Option(longNames = "minutes") long intervalMinutes,
+            @Option(longNames = "config", defaultValue = "default") String configName
     ) {
-        tradeSchedulerService.scheduleTrade(symbol, intervalMinutes);
-        return "Scheduled " + symbol + " every " + intervalMinutes + " minutes.";
+        tradeSchedulerService.scheduleTrade(symbol, intervalMinutes, configName);
+        return "Scheduled " + symbol + " every " + intervalMinutes + " minutes using " + configName + ".";
     }
 
     @Command(command = "cancel", description = "Cancel a scheduled AI trade for a symbol")
