@@ -116,4 +116,20 @@ public class BybitExchange implements Exchange {
         return BybitUtil.extractInstrumentPrecision(response, symbol);
     }
 
+    @Override
+    public boolean hasOpenOrders(String symbol) {
+        if (symbol == null || symbol.isBlank()) {
+            throw new IllegalArgumentException("symbol must be provided");
+        }
+
+        TradeOrderRequest request = TradeOrderRequest.builder()
+                .category(BybitUtil.mapCategory(ExchangeCategory.LINEAR))
+                .symbol(symbol)
+                .openOnly(0)
+                .build();
+
+        Object response = tradeClient.getOpenOrders(request);
+        return BybitUtil.hasOpenOrders(response);
+    }
+
 }

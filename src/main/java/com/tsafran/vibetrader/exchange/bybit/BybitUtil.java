@@ -130,6 +130,27 @@ public final class BybitUtil {
         return Util.parseDecimal(firstMap.get("totalAvailableBalance"));
     }
 
+    public static boolean hasOpenOrders(Object response) {
+        GenericResponse<Map<String, Object>> genericResponse = MAPPER.convertValue(
+                response,
+                new TypeReference<>() {}
+        );
+
+        if (genericResponse.getRetCode() != 0) {
+            throw new IllegalStateException(
+                    "Bybit error: " + genericResponse.getRetCode() + " " + genericResponse.getRetMsg()
+            );
+        }
+
+        Map<String, Object> result = genericResponse.getResult();
+        if (result == null) {
+            return false;
+        }
+
+        Object listObj = result.get("list");
+        return (listObj instanceof List<?> list) && !list.isEmpty();
+    }
+
     public static AccountType mapAccountType(ExchangeAccountType accountType) {
         return switch (accountType) {
             case UNIFIED -> AccountType.UNIFIED;

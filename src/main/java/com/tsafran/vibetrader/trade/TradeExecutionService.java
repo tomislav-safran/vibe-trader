@@ -30,12 +30,24 @@ public class TradeExecutionService {
         Objects.requireNonNull(symbol, "symbol");
 
         logger.info("Placing trade for symbol: {}", symbol);
+        if (exchange.hasOpenOrders(symbol)) {
+            logger.info("Skipping trade: open order already exists for {}", symbol);
+            return null;
+        }
         String systemMessage = buildSystemMessage();
         String userMessage = buildUserMessage(symbol);
 
         logger.info("Prompting AI...");
         AiTradeProposal proposal = aiTradeService.proposeTrade(symbol, systemMessage, userMessage);
         logger.info("AI response: {}", proposal);
+        if (proposal.certaintyPercent() < TradeAiConfig.CERTAINTY_THRESHOLD) {
+            logger.info(
+                    "Trade skipped: certainty {} below threshold {}",
+                    proposal.certaintyPercent(),
+                    TradeAiConfig.CERTAINTY_THRESHOLD
+            );
+            return null;
+        }
         if (proposal.proposedPosition() == null) {
             logger.info("No trade opportunity returned by AI.");
             return null;

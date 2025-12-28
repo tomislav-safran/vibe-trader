@@ -53,7 +53,11 @@ public class OpenAiTradeService implements AiTradeService {
             throw new IllegalStateException("AI response was empty");
         }
 
-        return new AiTradeProposal(response.reasoning(), toProposedPosition(symbol, response.trade()));
+        return new AiTradeProposal(
+                response.reasoning(),
+                validateCertaintyPercent(response.certaintyPercent()),
+                toProposedPosition(symbol, response.trade())
+        );
     }
 
     private ProposedPosition toProposedPosition(String symbol, AiTradeResponse.Trade trade) {
@@ -94,7 +98,14 @@ public class OpenAiTradeService implements AiTradeService {
         return value;
     }
 
-    private record AiTradeResponse(String reasoning, Trade trade) {
+    private int validateCertaintyPercent(int certaintyPercent) {
+        if (certaintyPercent < 0 || certaintyPercent > 100) {
+            throw new IllegalStateException("certaintyPercent must be between 0 and 100");
+        }
+        return certaintyPercent;
+    }
+
+    private record AiTradeResponse(String reasoning, int certaintyPercent, Trade trade) {
         private record Trade(
                 String side,
                 String entryPrice,

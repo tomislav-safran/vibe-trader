@@ -11,4 +11,6 @@ public interface Exchange {
     java.math.BigDecimal getWalletBalance(WalletBalanceRequest request);
 
     InstrumentPrecision getInstrumentPrecision(String symbol);
+
+    boolean hasOpenOrders(String symbol);
 }
