@@ -5,6 +5,9 @@ public record IndicatorConfig(
         Integer period,
         Integer fastPeriod,
         Integer slowPeriod,
-        Integer signalPeriod
+        Integer signalPeriod,
+        Integer rsiPeriod,
+        Integer stochPeriod,
+        Integer kPeriod
 ) {
 }

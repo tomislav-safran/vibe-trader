@@ -1,5 +1,6 @@
 package com.tsafran.vibetrader.indicators;
 
 public enum IndicatorType {
-    EMA
+    EMA,
+    STOCH_RSI_K
 }

@@ -7,7 +7,10 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.StochasticRSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NumFactory;
@@ -45,6 +48,7 @@ public class IndicatorService {
             }
             switch (indicator.type()) {
                 case EMA -> results.add(computeEmaSeries(series, indicator, maxScale));
+                case STOCH_RSI_K -> results.add(computeStochRsiKSeries(series, indicator, maxScale));
                 default -> throw new IllegalArgumentException("Unsupported indicator: " + indicator.type());
             }
         }
@@ -74,6 +78,37 @@ public class IndicatorService {
             values.add(rounded.toPlainString());
         }
         return new IndicatorSeries("EMA(" + period + ")", values);
+    }
+
+    private IndicatorSeries computeStochRsiKSeries(BarSeries series, IndicatorConfig indicator, int scale) {
+        int rsiPeriod = requirePositive(indicator.rsiPeriod(), "Stoch RSI K requires rsiPeriod.");
+        int stochPeriod = requirePositive(indicator.stochPeriod(), "Stoch RSI K requires stochPeriod.");
+        int kPeriod = requirePositive(indicator.kPeriod(), "Stoch RSI K requires kPeriod.");
+
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        RSIIndicator rsi = new RSIIndicator(closePrice, rsiPeriod);
+        StochasticRSIIndicator stochRsi = new StochasticRSIIndicator(rsi, stochPeriod);
+        SMAIndicator kLine = new SMAIndicator(stochRsi, kPeriod);
+
+        List<String> values = new ArrayList<>(series.getBarCount());
+        int warmup = (rsiPeriod - 1) + (stochPeriod - 1) + (kPeriod - 1);
+        for (int i = 0; i < series.getBarCount(); i++) {
+            if (i < warmup) {
+                values.add("NA");
+                continue;
+            }
+            var num = kLine.getValue(i);
+            if (num.isNaN()) {
+                values.add("NA");
+                continue;
+            }
+            BigDecimal rounded = num.bigDecimalValue().setScale(2, RoundingMode.HALF_UP);
+            values.add(rounded.toPlainString());
+        }
+        return new IndicatorSeries(
+                "STOCH_RSI_K(" + rsiPeriod + "," + stochPeriod + "," + kPeriod + ")",
+                values
+        );
     }
 
     private BarSeries toSeries(List<Ohlcv> candles, ExchangeInterval interval) {
@@ -120,6 +155,13 @@ public class IndicatorService {
             case ONE_WEEK -> Duration.ofDays(7);
             case ONE_MONTH -> Duration.ofDays(30);
         };
+    }
+
+    private int requirePositive(Integer value, String message) {
+        if (value == null || value <= 0) {
+            throw new IllegalArgumentException(message);
+        }
+        return value;
     }
 
     private int resolveMaxCloseScale(List<Ohlcv> candles) {
