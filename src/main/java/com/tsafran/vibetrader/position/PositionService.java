@@ -50,6 +50,13 @@ public class PositionService {
         BigDecimal rawQty = riskAmount.divide(riskPerUnit, RISK_DIVIDE_SCALE, RoundingMode.DOWN);
         BigDecimal qty = Util.roundDownToStep(rawQty, qtyStep);
 
+        // Cap position size so total value doesn't exceed available balance
+        BigDecimal positionValue = qty.multiply(entry);
+        if (positionValue.compareTo(balance) > 0) {
+            BigDecimal maxQty = balance.divide(entry, RISK_DIVIDE_SCALE, RoundingMode.DOWN);
+            qty = Util.roundDownToStep(maxQty, qtyStep);
+        }
+
         if (qty.signum() <= 0) {
             throw new IllegalStateException("Calculated quantity is too small for the instrument precision");
         }

@@ -10,7 +10,7 @@ public class TradeSchedulerConfig {
     @Bean
     public ThreadPoolTaskScheduler tradeTaskScheduler() {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(2);
+        scheduler.setPoolSize(4);
         scheduler.setThreadNamePrefix("trade-scheduler-");
         return scheduler;
     }

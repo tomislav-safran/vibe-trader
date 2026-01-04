@@ -26,6 +26,8 @@ public class OpenAiTradeService implements AiTradeService {
         this.outputConverter = new BeanOutputConverter<>(AiTradeResponse.class, objectMapper);
         this.chatOptions = OpenAiChatOptions.builder()
                 .model("gpt-5.2")
+                .reasoningEffort("high")
+                .temperature(1.0)
                 .responseFormat(ResponseFormat.builder()
                         .type(ResponseFormat.Type.JSON_SCHEMA)
                         .jsonSchema(ResponseFormat.JsonSchema.builder()
