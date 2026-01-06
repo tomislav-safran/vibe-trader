@@ -5,6 +5,7 @@ import com.bybit.api.client.domain.account.request.AccountDataRequest;
 import com.bybit.api.client.domain.market.request.MarketDataRequest;
 import com.bybit.api.client.domain.market.response.kline.MarketKlineEntry;
 import com.bybit.api.client.domain.position.TpslMode;
+import com.bybit.api.client.domain.trade.TimeInForce;
 import com.bybit.api.client.domain.trade.request.TradeOrderRequest;
 import com.bybit.api.client.domain.trade.response.OrderResponse;
 import com.bybit.api.client.restApi.BybitApiAccountRestClient;
@@ -13,6 +14,7 @@ import com.bybit.api.client.restApi.BybitApiTradeRestClient;
 import com.tsafran.vibetrader.exchange.Exchange;
 import com.tsafran.vibetrader.exchange.ExchangeCategory;
 import com.tsafran.vibetrader.exchange.ExchangeInterval;
+import com.tsafran.vibetrader.exchange.ExchangeOrderSide;
 import com.tsafran.vibetrader.exchange.FuturesMarketOrderRequest;
 import com.tsafran.vibetrader.exchange.InstrumentPrecision;
 import com.tsafran.vibetrader.util.Util;
@@ -76,17 +78,18 @@ public class BybitExchange implements Exchange {
                 .orderType(TradeOrderType.MARKET)
                 .tpslMode(TpslMode.FULL.name())
                 .isLeverage(1)
+                .closeOnTrigger(true)
                 .qty(request.quantity().toPlainString());
 
-        if (request.takeProfit() != null) {
-            builder.takeProfit(request.takeProfit().toPlainString());
-        }
         if (request.stopLoss() != null) {
             builder.stopLoss(request.stopLoss().toPlainString());
         }
 
         Object response = tradeClient.createOrder(builder.build());
         OrderResponse orderResponse = BybitUtil.getOrderResponse(response);
+        if (request.takeProfit() != null) {
+            placeReduceOnlyTakeProfitOrder(request);
+        }
         return orderResponse == null ? null : orderResponse.getOrderId();
     }
 
@@ -132,4 +135,23 @@ public class BybitExchange implements Exchange {
         return BybitUtil.hasOpenOrders(response);
     }
 
+    private void placeReduceOnlyTakeProfitOrder(FuturesMarketOrderRequest request) {
+        ExchangeOrderSide tpSide = request.side() == ExchangeOrderSide.LONG
+                ? ExchangeOrderSide.SHORT
+                : ExchangeOrderSide.LONG;
+
+        TradeOrderRequest tpRequest = TradeOrderRequest.builder()
+                .category(BybitUtil.mapCategory(request.category()))
+                .symbol(request.symbol())
+                .side(BybitUtil.mapSide(tpSide))
+                .orderType(TradeOrderType.LIMIT)
+                .timeInForce(TimeInForce.POST_ONLY)
+                .reduceOnly(true)
+                .isLeverage(1)
+                .qty(request.quantity().toPlainString())
+                .price(request.takeProfit().toPlainString())
+                .build();
+
+        tradeClient.createOrder(tpRequest);
+    }
 }

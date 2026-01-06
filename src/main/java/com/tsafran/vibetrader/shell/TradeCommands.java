@@ -1,7 +1,7 @@
 package com.tsafran.vibetrader.shell;
 
-import com.tsafran.vibetrader.trade.TradeExecutionService;
-import com.tsafran.vibetrader.trade.TradeSchedulerService;
+import com.tsafran.vibetrader.trade.AiTradeExecutionService;
+import com.tsafran.vibetrader.trade.AiTradeSchedulerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.shell.command.annotation.Command;
 import org.springframework.shell.command.annotation.Option;
@@ -11,15 +11,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Command(command = "trade", description = "AI-driven trade commands")
 public class TradeCommands {
-    private final TradeExecutionService tradeExecutionService;
-    private final TradeSchedulerService tradeSchedulerService;
+    private final AiTradeExecutionService aiTradeExecutionService;
+    private final AiTradeSchedulerService aiTradeSchedulerService;
 
     @Command(command = "place", description = "Craft and place a single AI trade for a symbol")
     public String place(
             @Option(longNames = "symbol") String symbol,
             @Option(longNames = "config", defaultValue = "default") String configName
     ) {
-        String orderId = tradeExecutionService.craftAndPlaceTrade(symbol, configName);
+        String orderId = aiTradeExecutionService.craftAndPlaceTrade(symbol, configName);
         if (orderId == null || orderId.isBlank()) {
             return "No trade placed.";
         }
@@ -32,13 +32,13 @@ public class TradeCommands {
             @Option(longNames = "minutes") long intervalMinutes,
             @Option(longNames = "config", defaultValue = "default") String configName
     ) {
-        tradeSchedulerService.scheduleTrade(symbol, intervalMinutes, configName);
+        aiTradeSchedulerService.scheduleTrade(symbol, intervalMinutes, configName);
         return "Scheduled " + symbol + " every " + intervalMinutes + " minutes using " + configName + ".";
     }
 
     @Command(command = "cancel", description = "Cancel a scheduled AI trade for a symbol")
     public String cancel(@Option(longNames = "symbol") String symbol) {
-        tradeSchedulerService.cancelTrade(symbol);
+        aiTradeSchedulerService.cancelTrade(symbol);
         return "Cancelled schedule for " + symbol + ".";
     }
 }

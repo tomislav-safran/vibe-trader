@@ -23,18 +23,14 @@ import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
-public class TradeExecutionService {
-    private static final Logger logger = LoggerFactory.getLogger(TradeExecutionService.class);
+public class AiTradeExecutionService {
+    private static final Logger logger = LoggerFactory.getLogger(AiTradeExecutionService.class);
 
     private final Exchange exchange;
     private final AiTradeService aiTradeService;
     private final PositionService positionService;
     private final TradeAiConfigService tradeAiConfigService;
     private final IndicatorService indicatorService;
-
-    public String craftAndPlaceTrade(String symbol) {
-        return craftAndPlaceTrade(symbol, null);
-    }
 
     public String craftAndPlaceTrade(String symbol, String configName) {
         Objects.requireNonNull(symbol, "symbol");

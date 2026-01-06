@@ -15,11 +15,11 @@ import java.util.concurrent.ScheduledFuture;
 
 @Service
 @RequiredArgsConstructor
-public class TradeSchedulerService {
-    private static final Logger logger = LoggerFactory.getLogger(TradeSchedulerService.class);
+public class AiTradeSchedulerService {
+    private static final Logger logger = LoggerFactory.getLogger(AiTradeSchedulerService.class);
 
     private final TaskScheduler tradeTaskScheduler;
-    private final TradeExecutionService tradeExecutionService;
+    private final AiTradeExecutionService aiTradeExecutionService;
     private final TradeAiConfigService tradeAiConfigService;
     private final Map<String, ScheduledFuture<?>> scheduledJobs = new ConcurrentHashMap<>();
 
@@ -61,7 +61,7 @@ public class TradeSchedulerService {
 
     private void runTrade(String symbol, String configName) {
         try {
-            String orderId = tradeExecutionService.craftAndPlaceTrade(symbol, configName);
+            String orderId = aiTradeExecutionService.craftAndPlaceTrade(symbol, configName);
             if (orderId == null || orderId.isBlank()) {
                 logger.info("No trade placed for {}", symbol);
             } else {

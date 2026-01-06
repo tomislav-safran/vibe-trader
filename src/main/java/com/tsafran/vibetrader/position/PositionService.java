@@ -19,6 +19,10 @@ public class PositionService {
     private static final BigDecimal MAX_RISK_FRACTION = new BigDecimal("0.01");
     private static final int RISK_DIVIDE_SCALE = 16;
 
+    // Bybit fees (as decimals)
+    private static final BigDecimal TAKER_FEE = new BigDecimal("0.00055"); // 0.0550%
+    private static final BigDecimal MAKER_FEE = new BigDecimal("0.00020"); // 0.0200%
+
     private final Exchange exchange;
 
     public FuturesMarketOrderRequest buildMarketOrder(ProposedPosition proposedPosition) {
@@ -36,8 +40,8 @@ public class PositionService {
         BigDecimal stopLoss = Util.roundToStep(proposedPosition.stopLossPrice(), tickSize);
         BigDecimal takeProfit = Util.roundToStep(proposedPosition.takeProfitPrice(), tickSize);
 
-        BigDecimal riskPerUnit = entry.subtract(stopLoss).abs();
-        if (riskPerUnit.signum() == 0) {
+        BigDecimal priceRiskPerUnit = entry.subtract(stopLoss).abs();
+        if (priceRiskPerUnit.signum() == 0) {
             throw new IllegalArgumentException("entryPrice and stopLossPrice must differ");
         }
 
@@ -47,6 +51,12 @@ public class PositionService {
         }
 
         BigDecimal riskAmount = balance.multiply(MAX_RISK_FRACTION);
+
+        // Market entry => taker fee on entry
+        BigDecimal entryFeePerUnit = entry.multiply(TAKER_FEE);
+
+        BigDecimal riskPerUnit = priceRiskPerUnit.add(entryFeePerUnit);
+
         BigDecimal rawQty = riskAmount.divide(riskPerUnit, RISK_DIVIDE_SCALE, RoundingMode.DOWN);
         BigDecimal qty = Util.roundDownToStep(rawQty, qtyStep);
 
